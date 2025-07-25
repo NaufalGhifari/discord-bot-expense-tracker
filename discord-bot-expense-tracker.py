@@ -142,6 +142,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    is_processing_expense = False # does not process by default
     if message.author == client.user:
         return
 
@@ -149,7 +150,7 @@ async def on_message(message):
         await message.channel.send(HELP_MESSAGE)
         return
 
-    is_processing_expense = False # does not process by default
+    
     # remove prefix if mentioned or contains $expense
     if client.user in message.mentions:
         mention = f"<@{client.user.id}>"
@@ -157,9 +158,16 @@ async def on_message(message):
         query = message.content.replace(mention, "").replace(alt_mention, "").strip()
         is_processing_expense = True
 
-    elif message.content.startswith("$expense"):
-        query = message.content[len("$expense"):].strip()
-        is_processing_expense = True
+    # message is only '$expense'
+    elif message.content == "$expense":
+        await message.channel.send("❌ Please provide expense details.")
+        return
+    
+    # message is $expense <some stuff>
+    elif message.content.startswith("$expense "):
+        query = message.content[len("$expense "):].strip()
+        if query:
+            is_processing_expense = True
 
     # process adding expense to gsheet
     if is_processing_expense:
