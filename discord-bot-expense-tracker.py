@@ -84,6 +84,53 @@ USER_MESSAGE:
 """
 
 # ==============================================================
+HELP_MESSAGE = """**📒 Expense Tracker Bot Help**
+
+Hi! I'm your friendly expense tracker bot.
+You can use me to log your expenses directly to Google Sheets.
+
+**💡 How to use:**
+
+```
+$expense <your expense>
+```
+
+Or just mention me:
+
+```
+@ExpenseBot <your expense>
+```
+
+**✅ Example:**
+
+```
+$expense Lunch nasi goreng 25k today
+```
+
+Or
+
+```
+@ExpenseBot Coffee 50k 21-07-2025
+```
+
+I'll parse the message and add:
+
+* **Category** (like Food, Transport, etc)
+* **Name** (short name of the expense)
+* **Date** (DD-MM-YYYY)
+* **Amount** (numbers like 25k → 25000)
+
+Your data goes straight into your Google Sheet.
+Keep it neat and simple! 🧾✨
+
+**Available Commands:**
+
+* `$expense` → Log a new expense.
+* `$expense-help` → Show this help message.
+
+Happy tracking! 🗂️
+"""
+
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -97,9 +144,25 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
-    if message.content.startswith("$expense"):
-        query = message.content[len("$expense"):].strip()
 
+    if message.content.startswith("$expense-help"):
+        await message.channel.send(HELP_MESSAGE)
+        return
+
+    is_processing_expense = False # does not process by default
+    # remove prefix if mentioned or contains $expense
+    if client.user in message.mentions:
+        mention = f"<@{client.user.id}>"
+        alt_mention = f"<@!{client.user.id}>"
+        query = message.content.replace(mention, "").replace(alt_mention, "").strip()
+        is_processing_expense = True
+
+    elif message.content.startswith("$expense"):
+        query = message.content[len("$expense"):].strip()
+        is_processing_expense = True
+
+    # process adding expense to gsheet
+    if is_processing_expense:
         combined = system_prompt + query
         expense = json_string_to_dict(query_gemini(combined))
 
