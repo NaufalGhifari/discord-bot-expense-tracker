@@ -11,23 +11,22 @@ load_dotenv()
 
 class Gsheet_agent:
     def __init__(self):
-        # Define the scope
         self.scopes = ["https://spreadsheets.google.com/feeds",
                 "https://www.googleapis.com/auth/spreadsheets",
                 "https://www.googleapis.com/auth/drive.file",
                 "https://www.googleapis.com/auth/drive"]
 
-        # Load your service account JSON
-        self.creds = ServiceAccountCredentials.from_json_keyfile_name(
-        os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"), self.scopes)
+        # load service account JSON
+        json_content = json.loads(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT"))
+        self.creds = ServiceAccountCredentials.from_json_keyfile_dict(json_content, self.scopes)
 
         # Authorize the client
         self.client = gspread.authorize(self.creds)
 
-        # Open the Google Sheet by its name or ID
+        # open gsheet by link
         self.spreadsheet = self.client.open_by_url("https://docs.google.com/spreadsheets/d/1fklDCTPnUQpNMpL1aVeIThXrJVwEcoaT7-VEvgEtPIQ/edit?gid=0#gid=0")
 
-        # Select the first worksheet/tab
+        # select the first worksheet
         self.sheet = self.spreadsheet.sheet1
     
     def write_to_sheet(self, row):
@@ -86,7 +85,7 @@ USER_MESSAGE:
 
 # ==============================================================
 intents = discord.Intents.default()
-intents.message_content = True  # Required to read message content
+intents.message_content = True
 
 client = discord.Client(intents=intents)
 
