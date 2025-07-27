@@ -10,7 +10,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 load_dotenv()
 
 class Gsheet_agent:
-    def __init__(self):
+    def __init__(self, ghseet_URL):
         self.scopes = ["https://spreadsheets.google.com/feeds",
                 "https://www.googleapis.com/auth/spreadsheets",
                 "https://www.googleapis.com/auth/drive.file",
@@ -24,7 +24,7 @@ class Gsheet_agent:
         self.client = gspread.authorize(self.creds)
 
         # open gsheet by link
-        self.spreadsheet = self.client.open_by_url("https://docs.google.com/spreadsheets/d/1fklDCTPnUQpNMpL1aVeIThXrJVwEcoaT7-VEvgEtPIQ/edit?gid=0#gid=0")
+        self.spreadsheet = self.client.open_by_url(ghseet_URL)
 
         # select the first worksheet
         self.sheet = self.spreadsheet.sheet1
@@ -70,7 +70,7 @@ def query_gemini(query, text_only=True):
     else:
         return response.json()['candidates'][0]['content']['parts'][0]['text']
 
-gsheet = Gsheet_agent()
+
 
 system_prompt = """
 You are a parsing agent, your sole task is to identify the category, name, date, and amount of the expense from USER_MESSAGE.
@@ -142,7 +142,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    is_processing_expense = False # does not process by default
+    is_processing_expense = False
     if message.author == client.user:
         return
 
@@ -150,40 +150,51 @@ async def on_message(message):
         await message.channel.send(HELP_MESSAGE)
         return
 
-    
-    # remove prefix if mentioned or contains $expense
     if client.user in message.mentions:
         mention = f"<@{client.user.id}>"
         alt_mention = f"<@!{client.user.id}>"
         query = message.content.replace(mention, "").replace(alt_mention, "").strip()
+
+        if not query:
+            await message.channel.send("❌ Please provide expense details after mentioning me.")
+            return
+
         is_processing_expense = True
 
-    # message is only '$expense'
     elif message.content == "$expense":
         await message.channel.send("❌ Please provide expense details.")
         return
-    
-    # message is $expense <some stuff>
+
     elif message.content.startswith("$expense "):
         query = message.content[len("$expense "):].strip()
-        if query:
-            is_processing_expense = True
+        if not query:
+            await message.channel.send("❌ Please provide expense details.")
+            return
+        is_processing_expense = True
 
-    # process adding expense to gsheet
+    gsheet_URLs = {
+        os.getenv("USER_1_ID") : os.getenv("USER_1_URL"),
+        os.getenv("USER_2_ID") : os.getenv("USER_2_URL")
+    }
+
     if is_processing_expense:
+        author_gsheet_URL = gsheet_URLs.get(str(message.author.id))
+        print(f"message.author.id:{message.author.id}")
+        print(f"author_gsheet_URL:{author_gsheet_URL}")
+        gsheet = Gsheet_agent(author_gsheet_URL)
+
         combined = system_prompt + query
         expense = json_string_to_dict(query_gemini(combined))
 
         print(f"expense:{expense}")
 
-        row = []
-        row.append(expense['category'])
-        row.append(expense['name'])
-        row.append(expense['date'])
-        row.append(expense['amount'])
+        row = [
+            expense['category'],
+            expense['name'],
+            expense['date'],
+            expense['amount'],
+        ]
 
         gsheet.write_to_sheet(row)
-
-        await message.channel.send(f"✅ Added to google sheet: {row}")
-        
+        await message.channel.send(f"✅ Added to Google Sheet: {row}")
 client.run(os.getenv("DISCORD_BOT_TOKEN"))
