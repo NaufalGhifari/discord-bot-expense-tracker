@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime, timezone, timedelta
 
 # load variables from .env
 load_dotenv()
@@ -25,8 +26,6 @@ class Gsheet_agent:
         # open gsheet by link & select the first worksheet
         self.spreadsheet = self.client.open_by_url(ghseet_URL)
         self.sheet = self.spreadsheet.sheet1
-
-        
     
     def write_to_sheet(self, row):
         success = self.sheet.append_row(row)
@@ -69,6 +68,37 @@ class Gsheet_agent:
         else:
             return response.json()['candidates'][0]['content']['parts'][0]['text']
 
+    def message_to_row(message, auto=False):
+        system_prompt = """
+        You are a parsing agent, your sole task is to identify the category, name, date, and amount of the expense from USER_MESSAGE.
 
+        Rules:
+        1. If you see a number followed by 'k', that most likely means 000, so 150k should be parsed as 150000.
+        2. Date format should be DD-MM-YYYY.
+        3. Only output the answer in dict format, nothing else
+
+        USER_MESSAGE:
+        """
+
+        combined_query = system_prompt + message
+        expense = Gsheet_agent.json_string_to_dict(Gsheet_agent.query_gemini(combined_query))
+        print(f"expense:{expense}")
+
+        # If not defined, set date to WIB today
+        if expense['date'] == None:
+            wib = timezone(timedelta(hours=7))
+            now_wib = datetime.now(wib)
+            formatted_date = now_wib.strftime("%d-%m-%Y")
+            expense['date'] = formatted_date
+
+        row = [
+                expense['category'],
+                expense['name'],
+                expense['date'],
+                expense['amount']
+            ]
+        if auto:
+            row.append("Auto")
+        return row
 
 

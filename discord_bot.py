@@ -120,16 +120,7 @@ Happy tracking! 🗂️
             print(f"author_gsheet_URL:{author_gsheet_URL}")
             gsheet = Gsheet_agent(author_gsheet_URL)
 
-            combined_query = self.system_prompt + query
-            expense = Gsheet_agent.json_string_to_dict(Gsheet_agent.query_gemini(combined_query))
-            print(f"expense:{expense}")
-
-            row = [
-                expense['category'],
-                expense['name'],
-                expense['date'],
-                expense['amount'],
-            ]
+            row = gsheet.message_to_row(query)
 
             gsheet.write_to_sheet(row)
             await message.channel.send(f"✅ Added to Google Sheet: {row}")

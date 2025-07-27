@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 import threading
 import uvicorn
+from parser_writer import Gsheet_agent
 
 class WebhookServer:
     def __init__(self):
@@ -11,15 +12,16 @@ class WebhookServer:
         # Register routes
         self.app.post("/notify")(self.notify)
 
+
     async def notify(self, request: Request):
         data = await request.json()
-        print(f"data: {data}")
+        message = data.get("message")
         
-        # message = data.get("message")
+        print(f"data: {data}")
+        print(f"message:{message}")
 
-        # Do your parsing here (Gemini or regex or other logic)
-        # row = ["Test", message, "25-07-2025", 100000, "Auto"]
-        # self.gsheet.write_to_sheet(row)
+        row = Gsheet_agent.message_to_row(message, auto=True)
+        print(f"row:{row}")
 
         return {"status": "ok"}
 
