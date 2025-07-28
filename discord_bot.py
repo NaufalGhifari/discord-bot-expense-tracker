@@ -120,7 +120,7 @@ Happy tracking! 🗂️
             print(f"author_gsheet_URL:{author_gsheet_URL}")
             gsheet = Gsheet_agent(author_gsheet_URL)
 
-            row = gsheet.message_to_row(query)
+            row = Gsheet_agent.message_to_row(query)
 
             gsheet.write_to_sheet(row)
             await message.channel.send(f"✅ Added to Google Sheet: {row}")
